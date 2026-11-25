@@ -713,14 +713,10 @@ footer {
         своей музыки.
       </p>
     </div>
-      <form action="https://formsubmit.co/spidervanya11@mail.ru" method="POST">
+      <form id="distributionForm" action="https://formsubmit.co/spidervanya11@mail.ru" method="POST">
       <input type="hidden" name="_subject" value="Новая заявка на Дистрибуцию">
       <input type="hidden" name="_next" value="https://spidervanya11-collab.github.io/nos-nard-des/success.html">
-      <p hidden>
-        <label>Не заполняйте:
-          <input name="bot-field">
-        </label>
-      </p>
+      <input type="text" name="_honey" style="display:none" tabindex="-1" autocomplete="off">
 
       <label for="email">Электронная почта *</label>
       <input
@@ -744,11 +740,11 @@ footer {
         name="message"
         placeholder="Сколько треков планируешь выпустить? Есть ли вопросы?"></textarea>
 
-      <button class="submit" type="submit">
+      <button class="submit" id="submitButton" type="submit">
         Отправить заявку →
       </button>
 
-      <div class="form-note">
+      <div class="form-note" id="formStatus" role="status" aria-live="polite">
         Отправляя заявку, вы соглашаетесь на обработку
         указанных данных для связи по поводу услуги.
       </div>
@@ -802,6 +798,72 @@ updateTheme();
 
 document.getElementById("year").textContent =
   new Date().getFullYear();
+
+/* FORM SUBMISSION WITH REAL FORMSUBMIT RESPONSE */
+const distributionForm = document.getElementById("distributionForm");
+
+if (distributionForm) {
+  distributionForm.addEventListener("submit", async function(event) {
+    event.preventDefault();
+
+    const submitButton = document.getElementById("submitButton");
+    const formStatus = document.getElementById("formStatus");
+    const originalButtonText = submitButton.textContent;
+    const formData = new FormData(distributionForm);
+
+    submitButton.disabled = true;
+    submitButton.textContent = "Отправляем...";
+    formStatus.textContent = "Отправляем заявку. Пожалуйста, подождите.";
+    formStatus.style.color = "var(--muted)";
+
+    try {
+      const ajaxUrl = distributionForm.action.replace(
+        "https://formsubmit.co/",
+        "https://formsubmit.co/ajax/"
+      );
+
+      const response = await fetch(ajaxUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        body: JSON.stringify(Object.fromEntries(formData.entries()))
+      });
+
+      let result;
+      try {
+        result = await response.json();
+      } catch {
+        throw new Error("Сервис вернул непонятный ответ. Попробуйте позже.");
+      }
+
+      // FormSubmit may return success as either a boolean or a string.
+      const accepted = result.success === true || result.success === "true";
+
+      if (!response.ok || !accepted) {
+        throw new Error(
+          result.message ||
+          result.error ||
+          "FormSubmit не принял заявку. Проверьте настройки формы и попробуйте ещё раз."
+        );
+      }
+
+      formStatus.textContent = "Заявка принята сервисом. Перенаправляем...";
+      formStatus.style.color = "#83d7b0";
+
+      const successUrl = distributionForm.querySelector('[name="_next"]').value;
+      window.location.assign(successUrl);
+    } catch (error) {
+      formStatus.textContent =
+        "Не удалось подтвердить отправку: " + error.message +
+        " Проверьте интернет и попробуйте ещё раз.";
+      formStatus.style.color = "#ff8d8d";
+      submitButton.disabled = false;
+      submitButton.textContent = originalButtonText;
+    }
+  });
+}
 </script>
 
 </body>
